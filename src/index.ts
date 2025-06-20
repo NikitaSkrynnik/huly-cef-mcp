@@ -8,7 +8,7 @@ import { base64 } from "zod/v4";
 let browser = new BrowserClient("ws://localhost:8080/browser");
 
 let server = new McpServer({
-    name: "FileSystem Server",
+    name: "Huly CEF Server",
     description: "A server that provides access to the file system",
     version: "1.0.0",
     capabilities: {
@@ -38,29 +38,7 @@ server.tool(
 );
 
 server.tool(
-    "move-mouse",
-    "Move the mouse to a specific position",
-    {
-        tabId: z.number().min(0).describe("The ID of the tab to move the mouse in"),
-        x: z.number().describe("The x coordinate to move the mouse to"),
-        y: z.number().describe("The y coordinate to move the mouse to")
-    },
-    async (args) => {
-        browser.mouseMove(args.tabId, args.x, args.y);
-
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: `Moved mouse to (${args.x}, ${args.y}) on page ${args.tabId}`
-                }
-            ]
-        };
-    }
-)
-
-server.tool(
-    "click-mouse",
+    "click",
     "Click the mouse at the current position",
     {
         tabId: z.number().min(0).describe("The ID of the tab to click the mouse in"),
@@ -69,6 +47,7 @@ server.tool(
     },
     async (args) => {
         browser.mouseClick(args.tabId, args.x, args.y, 0, true);
+        await new Promise(resolve => setTimeout(resolve, 100));
         browser.mouseClick(args.tabId, args.x, args.y, 0, false);
 
         return {
@@ -83,7 +62,7 @@ server.tool(
 );
 
 server.tool(
-    "get-screenshot",
+    "screenshot",
     "Get a screenshot of the current page",
     {
         tabId: z.number().min(0).describe("The ID of the tab to get the screenshot from")
@@ -114,8 +93,9 @@ server.tool(
         tabId: z.number().min(0).describe("The ID of the tab to send the input to")
     },
     async (args) => {
-        await browser.keyPress(args.tabId, KeyCode.ENTER, 0, true, false, false);
-        await browser.keyPress(args.tabId, KeyCode.ENTER, 0, false, false, false);
+        browser.keyPress(args.tabId, KeyCode.ENTER, 0, true, false, false);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        browser.keyPress(args.tabId, KeyCode.ENTER, 0, false, false, false);
 
         return {
             content: [
@@ -127,6 +107,53 @@ server.tool(
         };
     }
 )
+
+server.tool(
+    "type",
+    "Type text into the current page",
+    {
+        tabId: z.number().min(0).describe("The ID of the tab to send the input to"),
+        text: z.string().describe("The text to type into the page")
+    },
+    async (args) => {
+        for (let i = 0; i < args.text.length; i++) {
+            const char = args.text[i].charCodeAt(0);
+            browser.char(args.tabId, char);
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: `Typed text '${args.text}' on tab ${args.tabId}`
+                }
+            ]
+        };
+    }
+)
+
+// server.tool(
+//     "move-mouse",
+//     "Move the mouse to a specific position",
+//     {
+//         tabId: z.number().min(0).describe("The ID of the tab to move the mouse in"),
+//         x: z.number().describe("The x coordinate to move the mouse to"),
+//         y: z.number().describe("The y coordinate to move the mouse to")
+//     },
+//     async (args) => {
+//         browser.mouseMove(args.tabId, args.x, args.y);
+
+//         return {
+//             content: [
+//                 {
+//                     type: "text",
+//                     text: `Moved mouse to (${args.x}, ${args.y}) on page ${args.tabId}`
+//                 }
+//             ]
+//         };
+//     }
+// )
 
 // server.tool(
 //     "get-element-center",
@@ -173,27 +200,27 @@ server.tool(
 //     }
 // )
 
-server.tool(
-    "set-input-value",
-    "Set the value of an input element on the page",
-    {
-        tabId: z.number().min(0).describe("The ID of the tab to set the input value in"),
-        selector: z.string().describe("The CSS selector of the input element"),
-        value: z.string().describe("The value to set the input element to")
-    },
-    async (args) => {
-        browser.setText(args.tabId, args.selector, args.value);
+// server.tool(
+//     "set-input-value",
+//     "Set the value of an input element on the page",
+//     {
+//         tabId: z.number().min(0).describe("The ID of the tab to set the input value in"),
+//         selector: z.string().describe("The CSS selector of the input element"),
+//         value: z.string().describe("The value to set the input element to")
+//     },
+//     async (args) => {
+//         browser.setText(args.tabId, args.selector, args.value);
 
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: `Set value of input '${args.selector}' on tab ${args.tabId} to '${args.value}'`
-                }
-            ]
-        };
-    }
-)
+//         return {
+//             content: [
+//                 {
+//                     type: "text",
+//                     text: `Set value of input '${args.selector}' on tab ${args.tabId} to '${args.value}'`
+//                 }
+//             ]
+//         };
+//     }
+// )
 
 async function main() {
     const transport = new StdioServerTransport();
