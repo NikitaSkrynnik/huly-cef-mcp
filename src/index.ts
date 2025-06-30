@@ -25,12 +25,22 @@ server.tool(
     },
     async (args) => {
         let tabId = await browser.openTab(args.url);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        let clickableElements = await browser.getClickableElements(tabId);
+
+        let clickableElementsText = clickableElements.map((e, i) => {
+            return `[${i}] <${e.tag}>${e.text}</${e.tag}>`;
+        }).join("\n");
 
         return {
             content: [
                 {
                     type: "text",
                     text: "Opened page with id: " + tabId + " at " + args.url
+                },
+                {
+                    type: "text",
+                    text: "Clickable elements:\n" + clickableElementsText
                 }
             ]
         }
@@ -38,28 +48,47 @@ server.tool(
 );
 
 server.tool(
-    "click",
-    "Click the mouse at the current position",
+    "get-clickable-elements",
+    "Get all clickable elements on the current page",
     {
-        tabId: z.number().min(0).describe("The ID of the tab to click the mouse in"),
-        x: z.number().describe("The x coordinate to move the mouse to"),
-        y: z.number().describe("The y coordinate to move the mouse to"),
+        tabId: z.number().min(0).describe("The ID of the tab to get clickable elements from")
     },
     async (args) => {
-        browser.mouseClick(args.tabId, args.x, args.y, 0, true);
-        await new Promise(resolve => setTimeout(resolve, 100));
-        browser.mouseClick(args.tabId, args.x, args.y, 0, false);
+        let clickableElements = await browser.getClickableElements(args.tabId);
+        let clickableElementsText = clickableElements.map((e, i) => {
+            return `[${i}] <${e.tag}>${e.text}</${e.tag}>`;
+        }).join("\n");
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: `Clickable elements on tab ${args.tabId}:\n` + clickableElementsText
+                }
+            ]
+        };
+    }
+)
+
+server.tool(
+    "click-element",
+    "Click an element on the current page by its index",
+    {
+        tabId: z.number().min(0).describe("The ID of the tab to click the element in"),
+        index: z.number().int().min(0).describe("The index of the element to click")
+    },
+    async (args) => {
+        browser.clickElement(args.tabId, args.index);
 
         return {
             content: [
                 {
                     type: "text",
-                    text: `Clicked mouse at (${args.x}, ${args.y})`
+                    text: `Clicked element at index ${args.index} on tab ${args.tabId}`
                 }
             ]
-        };
+        }
     }
-);
+)
 
 server.tool(
     "screenshot",
@@ -68,7 +97,7 @@ server.tool(
         tabId: z.number().min(0).describe("The ID of the tab to get the screenshot from")
     },
     async (args) => {
-        let screenshot = await browser.screenshot(args.tabId);
+        let screenshot = await browser.screenshot(args.tabId, 800, 600);
 
         return {
             content: [
@@ -132,6 +161,51 @@ server.tool(
         };
     }
 )
+
+// server.tool(
+//     "scroll",
+//     "Scroll the page",
+//     {
+//         tabId: z.number().min(0).describe("The ID of the tab to scroll"),
+//         deltaX: z.number().default(0).describe("The amount to scroll horizontally"),
+//         deltaY: z.number().default(100).describe("The amount to scroll vertically")
+//     },
+//     async (args) => {
+//         browser.mouseWheel(args.tabId, 100, 100, args.deltaX, args.deltaY);
+//         return {
+//             content: [
+//                 {
+//                     type: "text",
+//                     text: `Scrolled page in tab ${args.tabId} by (${args.deltaX}, ${args.deltaY})`
+//                 }
+//             ]
+//         };
+//     }
+// )
+// server.tool(
+//     "click",
+//     "Click the mouse at the current position",
+//     {
+//         tabId: z.number().min(0).describe("The ID of the tab to click the mouse in"),
+//         x: z.number().describe("The x coordinate to move the mouse to"),
+//         y: z.number().describe("The y coordinate to move the mouse to"),
+//     },
+//     async (args) => {
+//         browser.mouseClick(args.tabId, args.x, args.y, 0, true);
+//         await new Promise(resolve => setTimeout(resolve, 100));
+//         browser.mouseClick(args.tabId, args.x, args.y, 0, false);
+
+//         return {
+//             content: [
+//                 {
+//                     type: "text",
+//                     text: `Clicked mouse at (${args.x}, ${args.y})`
+//                 }
+//             ]
+//         };
+//     }
+// );
+
 
 // server.tool(
 //     "move-mouse",
